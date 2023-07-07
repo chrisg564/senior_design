@@ -1,129 +1,127 @@
-#include <SoftwareSerial.h>
-SoftwareSerial mySerial(2, 3); // RX, TX
-int PIN_EN_OUT = 4;
-int PIN_STATE_IN = 5;
+//void setup() {
+//  pinMode(3, OUTPUT); // Set pin 8 as an output
+//}
+//
+//void loop() {
+//  digitalWrite(3, HIGH); // Set pin 8 to a high state
+//  delay(1000); // Wait for 1 second
+//  digitalWrite(2, LOW); // Set pin 8 to a low state
+//  delay(1000); // Wait for 1 second
+//}
+#include <AltSoftSerial.h>
+AltSoftSerial BTSerial; 
+ 
+char c=' ';
+boolean NL = true;
+ 
+void setup() 
+{
+    Serial.begin(9600);
+    Serial.print("Sketch:   ");   Serial.println(__FILE__);
+    Serial.print("Uploaded: ");   Serial.println(__DATE__);
+    Serial.println(" ");
+ 
+    BTSerial.begin(9600);  
+    Serial.println("BTserial started at 9600");
+ 
+    // If using an HC-05 in AT command mode the baud rate is likely to be 38400
+    // Comment out the above 2 lines and uncomment the following 2 lines. 
+    // BTSerial.begin(38400); 
+    // Serial.println("BTserial started at 38400");
+ 
+    Serial.println("");
+    delay(100);
+    sendCommand("AT");
+    delay(100);
+    sendCommand("AT+ROLE0");
+    delay(100);
+    sendCommand("AT+UUID0xFFE0");
+    delay(100);
+    sendCommand("AT+CHAR0xFFE1");
+    delay(100);
+    sendCommand("AT+NAMEg5sendesign");
+    delay(100);
 
-
-void setup() {
-  // put your setup code here, to run once:
-  mySerial.begin(9600);
-  Serial.begin(9600);
-
-  sendCommand("AT");
-  sendCommand("AT+ROLE0");
-  sendCommand("AT+UUID0xFFE0");
-  sendCommand("AT+CHAR0xFFE1");
-  sendCommand("AT+NAMEbluino");
+    BTSerial.write("test");
+ 
 }
 
-void sendCommand(const char * command) {
+void sendCommand(const char * command){
   Serial.print("Command send :");
   Serial.println(command);
-  mySerial.println(command);
+  BTSerial.println(command);
   //wait some time
   delay(100);
-
+  
   char reply[100];
   int i = 0;
-  while (mySerial.available()) {
-    reply[i] = mySerial.read();
+  while (BTSerial.available()) {
+    reply[i] = BTSerial.read();
     i += 1;
   }
   //end the string
   reply[i] = '\0';
-  Serial.print(reply);
-  Serial.println("Reply end");
-  delay(50);
-}
-
-void writeSerialToBLE(int value) {
-  mySerial.println(value);
+  Serial.write(reply);
 }
 
 void writeToBLE(char value) {
-  Serial.print("Writing hex :");
-  Serial.println(value, HEX);
-  mySerial.write(value);
+//  Serial.print("Writing hex :");
+//  Serial.println(value, HEX);
+  BTSerial.write(value);
 }
-
 char j = 0;
-void loop() {
-  // writeToBLE(j);
-  j += 1;
-  delay(500);
+void loop()
+{
+ 
+    // Read from the Bluetooth module and send to the Arduino Serial Monitor
+    if (BTSerial.available())
+    {
+        c = BTSerial.read();
+        Serial.write(c);
+    }
+ 
+ 
+    // Read from the Serial Monitor and send to the Bluetooth module
+    if (Serial.available())
+    {
+        c = Serial.read();
+        BTSerial.write(c);   
+ 
+        // Echo the user input to the main window. The ">" character indicates the user entered text.
+        if (NL) { Serial.print(">");  NL = false; }
+        Serial.write(c);
+        if (c==10) { NL = true; }
+    }
+
+    writeToBLE(j);
+    j += 1;
+    delay(500);
+    
+ 
 }
-
-// #include <SoftwareSerial.h>
-// #include <TimerOne.h>
-
-
-// // Define the data transmit/receive pins in Arduino
-
-// #define TxD 3
-// #define RxD 2
-
-// SoftwareSerial mySerial(RxD, TxD); // RX, TX for Bluetooth
-
-// void setup() {
-//   pinMode(9, OUTPUT);
-//   pinMode(10, OUTPUT);
-
-//   Timer1.initialize(10);  // Frequency, 100us = 10khz, 10 >>>------> 100KHz
-//   // Timer1.pwm(9,512);       // 50% DC on pin 9
-//   // Timer1.pwm(9, 512);
-//   Timer1.pwm(9, 100);
-
-//   //Timer1.pwm(10,255);    // 25% DC on pin 10
-
-//   // D.C.
-//   // 10KHz
-//   // You can use 2 to 1023
-//   // 0 & 1 gives a constant LOW
-//   // 1024 gives a constant HIGH
-//   // 2 gives ~125ns HIGH pulses
-//   // 1023 gives ~125ns low pulses
-//   // 512 gives 50us
-
-//   // Blue tooth
-//   mySerial.begin(9600); // For Bluetooth
-//   Serial.begin(9600); // For the IDE monitor Tools -> Serial Monitor
-//   sendCommand("AT");
-//   sendCommand("AT+ROLE0");
-//   sendCommand("AT+UUID0xFF00");
-//   sendCommand("AT+CHAR0xFF01");
-//   sendCommand("AT+NAMELightBlue");
-// }
-
-
-
-// void loop() {
-//   // Timer1.pwm(9, 1000);
-//   // for(int i=0; i < 50000; i++){
-//   //     // wait
-//   // }
-//   // int temp = 0;
-//   // while (true) {
-//   //   Timer1.pwm(9, temp);
-//   //   temp++;
-//   //   for (int i = 0; i < 10000; i++) {
-//   //     // wait
-//   //   }
-//   //   if (temp == 512) {
-//   //     temp = 0;
-//   //   }
-//   // }
-//   // for(int i=0; i < 10000; i++){
-//   //   Timer1.pwm(9,100); //10
-//   // }
-//   // for(int i=0; i < 10000; i++){
-//   //   Timer1.pwm(9,255); //25
-//   // }
-//   // for(int i=0; i < 10000; i++){
-//   //   Timer1.pwm(9,512); //50
-//   // }
-
-//   //BT
-  
-  
-
-// }
+//#include <TimerOne.h>
+////UNO only
+//
+//void setup()
+//{
+//pinMode(9,OUTPUT);
+//pinMode(10,OUTPUT);
+//
+//Timer1.initialize(10);  // Frequency, 100us = 10khz, 10 >>>------> 100KHz
+//// Timer1.pwm(9,512);       // 50% DC on pin 9
+//Timer1.pwm(9, 255);
+////Timer1.pwm(10,255);    // 25% DC on pin 10
+//
+//// D.C. 
+//// 10KHz
+//// You can use 2 to 1023 
+//// 0 & 1 gives a constant LOW 
+//// 1024 gives a constant HIGH
+//// 2 gives ~125ns HIGH pulses
+//// 1023 gives ~125ns low pulses
+//// 512 gives 50us
+//}
+//
+//void loop()
+//{
+//}
