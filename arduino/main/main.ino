@@ -1,127 +1,111 @@
-//void setup() {
-//  pinMode(3, OUTPUT); // Set pin 8 as an output
-//}
-//
-//void loop() {
-//  digitalWrite(3, HIGH); // Set pin 8 to a high state
-//  delay(1000); // Wait for 1 second
-//  digitalWrite(2, LOW); // Set pin 8 to a low state
-//  delay(1000); // Wait for 1 second
-//}
-#include <AltSoftSerial.h>
-AltSoftSerial BTSerial; 
- 
-char c=' ';
+//PWM lib (uses pin 9 and 10)
+#include <TimerOne.h>
+
+//BLE lib
+#include <SoftwareSerial.h>
+SoftwareSerial HM10(8, 7);
+
+
+// Pin setup
+// D5 is and output pin for the relay - HIGH is on, LOW is off
+// D7 goes to a Voltage divider to get 3.3V then RXD on the HM-10
+// D8 goes directly to TXD on HM-10
+
+char c = ' ';
 boolean NL = true;
- 
-void setup() 
+
+char appData;
+String inData = "";
+
+int speed = 0;
+int DC = 0;
+bool relay = false;
+
+void setup()
 {
-    Serial.begin(9600);
-    Serial.print("Sketch:   ");   Serial.println(__FILE__);
-    Serial.print("Uploaded: ");   Serial.println(__DATE__);
-    Serial.println(" ");
- 
-    BTSerial.begin(9600);  
-    Serial.println("BTserial started at 9600");
- 
-    // If using an HC-05 in AT command mode the baud rate is likely to be 38400
-    // Comment out the above 2 lines and uncomment the following 2 lines. 
-    // BTSerial.begin(38400); 
-    // Serial.println("BTserial started at 38400");
- 
-    Serial.println("");
-    delay(100);
-    sendCommand("AT");
-    delay(100);
-    sendCommand("AT+ROLE0");
-    delay(100);
-    sendCommand("AT+UUID0xFFE0");
-    delay(100);
-    sendCommand("AT+CHAR0xFFE1");
-    delay(100);
-    sendCommand("AT+NAMEg5sendesign");
-    delay(100);
+  // BLE setup
+  Serial.begin(9600);
+  Serial.print("Sketch:   ");   Serial.println(__FILE__);
+  Serial.print("Uploaded: ");   Serial.println(__DATE__);
+  Serial.println(" ");
 
-    BTSerial.write("test");
- 
+  HM10.begin(9600);
+  Serial.println("BTserial started at 9600");
+
+  // Emergency stop
+  pinMode(5, OUTPUT);
+
+  //PWM
+  pinMode(10, OUTPUT);
+  // Needs testing, but should use 20kHz instead of 100kHz
+  Timer1.initialize(50);  // Frequency, 100us = 10khz, 10 >>>------> 100KHz
 }
 
-void sendCommand(const char * command){
-  Serial.print("Command send :");
-  Serial.println(command);
-  BTSerial.println(command);
-  //wait some time
-  delay(100);
-  
-  char reply[100];
-  int i = 0;
-  while (BTSerial.available()) {
-    reply[i] = BTSerial.read();
-    i += 1;
-  }
-  //end the string
-  reply[i] = '\0';
-  Serial.write(reply);
-}
 
-void writeToBLE(char value) {
-//  Serial.print("Writing hex :");
-//  Serial.println(value, HEX);
-  BTSerial.write(value);
-}
-char j = 0;
+
 void loop()
 {
- 
-    // Read from the Bluetooth module and send to the Arduino Serial Monitor
-    if (BTSerial.available())
-    {
-        c = BTSerial.read();
-        Serial.write(c);
+  // Read from the Bluetooth module and send to the Arduino Serial Monitor
+  HM10.listen();  // listen the HM10 port
+
+  while (HM10.available() > 0) {   // if HM10 sends something then read
+    appData = HM10.read();
+    inData = String(appData);  // save the data in string format
+    //    Serial.write(appData);
+    // Change the duty cycle according to input
+    if (inData == "i") {
+      DC += 5;
+      Timer1.pwm(10, DC); // change DC on pin 10
+      Serial.println("DC is " + String(DC));
     }
- 
- 
-    // Read from the Serial Monitor and send to the Bluetooth module
-    if (Serial.available())
-    {
-        c = Serial.read();
-        BTSerial.write(c);   
- 
-        // Echo the user input to the main window. The ">" character indicates the user entered text.
-        if (NL) { Serial.print(">");  NL = false; }
-        Serial.write(c);
-        if (c==10) { NL = true; }
+    if (inData == "d") {
+      DC -= 5;
+      Timer1.pwm(10, DC); // change DC on pin 10
+      Serial.println("DC is " + String(DC));
+    }
+    if (inData == "s") {
+      relay = !relay;
+      if (relay) {
+        digitalWrite(5, HIGH);
+      } else {
+        digitalWrite(5, LOW);
+      }
+      Serial.println("relay changed");
     }
 
-    writeToBLE(j);
-    j += 1;
-    delay(500);
-    
- 
+    // Change the duty cycle, this is mainly for debugging and testing
+    if (inData == "[") {
+      String temp = "";
+      while (inData != "]") {
+        appData = HM10.read();
+        inData = String(appData);  // save the data in string format
+        temp += inData;
+      }
+      DC = temp.toInt();
+      Timer1.pwm(10, DC); // change DC on pin 10
+      Serial.println("DC is " + String(DC));
+    }
+  }
+
+
+  // Read from the Serial Monitor and send to the Bluetooth module
+  if (Serial.available()) {           // Read user input if available.
+    delay(10);
+    HM10.write(Serial.read());
+  }
+
+
+  if (speed > 25) {
+    speed = 0;
+  } else {
+    speed++;
+  }
+
+  char buffer[10];
+  itoa(speed, buffer, 10);
+  const char* stringValue = buffer;
+  HM10.println(stringValue);
+  //      BTserial.print("8,");
+  //      Serial.println("sent");
+  delay(100);
 }
-//#include <TimerOne.h>
-////UNO only
-//
-//void setup()
-//{
-//pinMode(9,OUTPUT);
-//pinMode(10,OUTPUT);
-//
-//Timer1.initialize(10);  // Frequency, 100us = 10khz, 10 >>>------> 100KHz
-//// Timer1.pwm(9,512);       // 50% DC on pin 9
-//Timer1.pwm(9, 255);
-////Timer1.pwm(10,255);    // 25% DC on pin 10
-//
-//// D.C. 
-//// 10KHz
-//// You can use 2 to 1023 
-//// 0 & 1 gives a constant LOW 
-//// 1024 gives a constant HIGH
-//// 2 gives ~125ns HIGH pulses
-//// 1023 gives ~125ns low pulses
-//// 512 gives 50us
-//}
-//
-//void loop()
-//{
-//}
