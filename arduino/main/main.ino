@@ -10,6 +10,7 @@ SoftwareSerial HM10(8, 7);
 // D5 is and output pin for the relay - HIGH is on, LOW is off
 // D7 goes to a Voltage divider to get 3.3V then RXD on the HM-10
 // D8 goes directly to TXD on HM-10
+// D10 PWM
 
 char c = ' ';
 boolean NL = true;
