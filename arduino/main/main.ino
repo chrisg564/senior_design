@@ -23,7 +23,7 @@ int DC = 0;
 bool relay = false;
 
 
-// PAS setup 
+// PAS setup
 const int PASpin = 3;  // Replace with the appropriate pin number
 const int intermediatepin = 2;
 
@@ -33,8 +33,8 @@ volatile unsigned long pulseEndTime = 0;
 volatile boolean pulseDetected = false;
 unsigned long pulseDuration = 0;
 
-const int lowPWMValue = 50;     // (.835 V)
-const int highPWMValue = 200;   // (3.64V)
+const int lowPWMValue = 50;    // (.835 V)
+const int highPWMValue = 200;  // (3.64V)
 
 
 void setup() {
@@ -56,15 +56,14 @@ void setup() {
   pinMode(10, OUTPUT);
   // Needs testing, but should use 20kHz instead of 100kHz
   Timer1.initialize(50);  // Frequency, 100us = 10khz, 10 >>>------> 100KHz
- 
+
   // PAS pin init
   pinMode(A0, INPUT);
-  pinMode(intermediatepin, OUTPUT);  
+  pinMode(intermediatepin, OUTPUT);
 
   pinMode(PASpin, INPUT);
   attachInterrupt(digitalPinToInterrupt(PASpin), handleInterrupt, RISING);
-  Serial.begin(9600);
-
+  // Serial.begin(9600);
 }
 
 
@@ -73,16 +72,18 @@ void loop() {
 
   bool currval = an2dig();
 
- if (pulseDetected) {
+  if (pulseDetected) {
     //unsigned long pulseEndTime = micros();
     unsigned long pulseDuration = pulseStartTime - prevpulseStartTime;
 
-    unsigned long frequencyx1000 = 1000000000.0 / (12.000*pulseDuration);  // Calculate frequency in Hz
-     Serial.print("\nFreq: ");
+    unsigned long frequencyx1000 = 1000000000.0 / (12.000 * pulseDuration);  // Calculate frequency in Hz
+    Serial.print("\nFreq: ");
     Serial.println(frequencyx1000);
 
     int mappedValue = map(frequencyx1000, 0, 2000, highPWMValue, lowPWMValue);  // Map frequency to 0-100 range
-
+    if (mappedValue < lowPWMValue) {
+      mappedValue = lowPWMValue;
+    }
 
     Serial.print("Mapped value: ");
     Serial.println(mappedValue);
@@ -91,7 +92,7 @@ void loop() {
     pulseDetected = false;
   }
 
-  
+
   // Read from the Bluetooth module and send to the Arduino Serial Monitor
   HM10.listen();  // listen the HM10 port
 
@@ -137,7 +138,7 @@ void loop() {
 
   // Read from the Serial Monitor and send to the Bluetooth module
   if (Serial.available()) {  // Read user input if available.
-    delay(10);
+    // delay(10);
     HM10.write(Serial.read());
   }
 
@@ -154,9 +155,7 @@ void loop() {
   HM10.println(stringValue);
   //      BTserial.print("8,");
   //      Serial.println("sent");
-  delay(100);
-
-  
+  // delay(100);
 }
 
 void handleInterrupt() {
@@ -165,11 +164,10 @@ void handleInterrupt() {
   pulseDetected = true;
 }
 
-bool an2dig(){
+bool an2dig() {
   int value = analogRead(A0);
-  bool pasval = (value>40);
-  digitalWrite(intermediatepin,pasval);
+  bool pasval = (value > 40);
+  digitalWrite(intermediatepin, pasval);
 
   return pasval;
 }
-
